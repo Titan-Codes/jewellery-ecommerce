@@ -4,6 +4,7 @@ import Blog from '@/models/Blog';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import cache from '@/lib/cache';
 
 // Check admin access
 async function checkAdminAccess() {
@@ -100,6 +101,9 @@ export async function PUT(request, context) {
             }
         }
 
+        // Get old blog to know the slug for cache invalidation
+        const oldBlog = await Blog.findById(id).select('slug');
+
         const blog = await Blog.findByIdAndUpdate(
             id,
             { ...data },
@@ -112,6 +116,15 @@ export async function PUT(request, context) {
                 { status: 404 }
             );
         }
+
+        // Invalidate caches
+        if (oldBlog?.slug) {
+            cache.delete(`blog:${oldBlog.slug}`);
+        }
+        if (blog?.slug && blog.slug !== oldBlog?.slug) {
+            cache.delete(`blog:${blog.slug}`);
+        }
+        cache.deleteByPrefix('blogs:public:');
 
         return NextResponse.json({
             success: true,
@@ -150,6 +163,12 @@ export async function DELETE(request, context) {
                 { status: 404 }
             );
         }
+
+        // Invalidate caches
+        if (blog?.slug) {
+            cache.delete(`blog:${blog.slug}`);
+        }
+        cache.deleteByPrefix('blogs:public:');
 
         return NextResponse.json({
             success: true,

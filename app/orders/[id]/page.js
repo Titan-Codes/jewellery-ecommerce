@@ -129,6 +129,7 @@ export default function OrderDetailPage({ params }) {
                 }
             }
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [resolvedParams]);
 
     const fetchOrder = async () => {
@@ -488,6 +489,7 @@ export default function OrderDetailPage({ params }) {
                                 transition={{ delay: 0.3 + index * 0.05 }}
                                 className="flex gap-4 pb-4 border-b border-gray-100 dark:border-white/[0.06] last:border-0"
                             >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src={item.image || '/placeholder.png'}
                                     alt={item.name}

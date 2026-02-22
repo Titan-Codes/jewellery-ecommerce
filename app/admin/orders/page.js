@@ -36,6 +36,7 @@ export default function AdminOrdersPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [downloadingDocs, setDownloadingDocs] = useState({});
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         fetchOrders();
     }, [page, statusFilter]);
@@ -408,6 +409,7 @@ export default function AdminOrdersPage() {
                                                         <div className="space-y-3">
                                                             {order.items.map((item, idx) => (
                                                                 <div key={idx} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
+                                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                                                     <img
                                                                         src={item.image || '/placeholder.png'}
                                                                         alt={item.name}

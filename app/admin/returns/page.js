@@ -46,6 +46,7 @@ export default function AdminReturnsPage() {
     const [expandedReturn, setExpandedReturn] = useState(null);
     const ITEMS_PER_PAGE = 20;
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         fetchReturns();
     }, [page, statusFilter]);

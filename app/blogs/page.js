@@ -24,6 +24,7 @@ export default function BlogsPage() {
     const [pagination, setPagination] = useState({});
     const [currentPage, setCurrentPage] = useState(1);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         fetchBlogs();
     }, [category, currentPage]);

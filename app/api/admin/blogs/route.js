@@ -4,6 +4,7 @@ import Blog from '@/models/Blog';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import cache from '@/lib/cache';
 
 // Check admin access
 async function checkAdminAccess() {
@@ -181,6 +182,9 @@ export async function POST(request) {
 
         await blog.save();
         await blog.populate('author', 'name email');
+
+        // Invalidate public blog list cache so the new blog appears immediately
+        cache.deleteByPrefix('blogs:public:');
 
         return NextResponse.json({
             success: true,

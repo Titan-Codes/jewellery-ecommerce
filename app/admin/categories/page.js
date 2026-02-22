@@ -630,6 +630,7 @@ function CategoriesAdmin() {
                     {(imagePreview || formData.image) && (
                       <div className="mb-3">
                         {imagePreview ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img
                             src={imagePreview || "/placeholder.svg"}
                             alt="Category preview"
@@ -835,6 +836,7 @@ function CategoriesAdmin() {
                     {(imagePreview || subcategoryFormData.image) && (
                       <div className="mb-3">
                         {imagePreview ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img
                             src={imagePreview || "/placeholder.svg"}
                             alt="Subcategory preview"

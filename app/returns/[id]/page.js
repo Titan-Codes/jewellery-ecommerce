@@ -41,6 +41,7 @@ export default function ReturnDetailPage({ params }) {
         Promise.resolve(params).then(setResolvedParams);
     }, [params]);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (resolvedParams?.id) {
             fetchReturn();

@@ -136,6 +136,7 @@ function AdminProductsPage() {
     }, []);
 
     // Initial fetch on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (mounted && !initialFetchDone.current) {
             initialFetchDone.current = true;
@@ -144,6 +145,7 @@ function AdminProductsPage() {
     }, [mounted]);
 
     // Refetch when filters change (after initial load)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (initialFetchDone.current && mounted) {
             fetchProducts();

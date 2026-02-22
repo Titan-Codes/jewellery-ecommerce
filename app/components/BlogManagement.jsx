@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Trash2, Eye, Search, Upload, X, Image as ImageIcon, Bold, Italic, Underline, List, ListOrdered, Quote, Link as LinkIcon, Type } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Search, Upload, X, Image as ImageIcon, Bold, Italic, Underline, List, ListOrdered, Quote, Link as LinkIcon, Type, RotateCcw, RemoveFormatting } from 'lucide-react';
 
 import { toast } from 'sonner';
 
@@ -96,6 +96,31 @@ export default function BlogManagement() {
                 // No selection — just toggle at cursor
                 document.execCommand(command, false, null);
             }
+        } else if (command === 'formatBlock' && value) {
+            // Toggle block formatting: if already in the target block, revert to <p>
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+                let node = sel.anchorNode;
+                // Walk up to find the closest block element
+                while (node && node !== editorRef.current) {
+                    if (node.nodeType === 1) { // Element node
+                        const tagName = node.tagName?.toLowerCase();
+                        if (tagName === value.toLowerCase()) {
+                            // Already this format — toggle back to paragraph
+                            document.execCommand('formatBlock', false, 'p');
+                            saveSelection();
+                            syncEditorContent();
+                            return;
+                        }
+                        // Stop at block-level elements
+                        if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'div'].includes(tagName)) {
+                            break;
+                        }
+                    }
+                    node = node.parentNode;
+                }
+            }
+            document.execCommand(command, false, value);
         } else {
             document.execCommand(command, false, value);
         }
@@ -568,6 +593,37 @@ export default function BlogManagement() {
                                         title="Link"
                                     >
                                         <LinkIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                <div className="hidden sm:block w-px h-5 bg-gray-300 mx-1"></div>
+
+                                {/* Clear Formatting & Reset */}
+                                <div className="flex items-center gap-0.5 bg-white rounded-lg border border-gray-200 p-0.5">
+                                    <button
+                                        type="button"
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => execFormat('removeFormat')}
+                                        className="p-1.5 text-gray-600 hover:text-orange-500 hover:bg-orange-50 rounded transition-colors"
+                                        title="Clear Formatting (selected text)"
+                                    >
+                                        <RemoveFormatting className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => {
+                                            if (window.confirm('Reset all content? This cannot be undone.')) {
+                                                if (editorRef.current) {
+                                                    editorRef.current.innerHTML = '';
+                                                    syncEditorContent();
+                                                }
+                                            }
+                                        }}
+                                        className="p-1.5 text-gray-600 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                        title="Reset All Content"
+                                    >
+                                        <RotateCcw className="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>

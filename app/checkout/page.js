@@ -729,6 +729,7 @@ export default function CheckoutPage() {
                             <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
                                 {cartItems && cartItems.map((item) => (
                                     <div key={item._id} className="flex gap-3 pb-4 border-b border-gray-200 dark:border-white/[0.06]">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
                                             src={item.selectedVariant?.images?.[0]?.url || item.image || item.product?.images?.[0] || '/placeholder.png'}
                                             alt={item.product?.name || item.name || 'Product'}
