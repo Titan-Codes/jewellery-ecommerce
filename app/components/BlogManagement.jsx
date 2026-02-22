@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,6 +29,86 @@ export default function BlogManagement() {
     const [pagination, setPagination] = useState({});
     const [uploading, setUploading] = useState(false);
     const [imagePreview, setImagePreview] = useState('');
+    const editorRef = useRef(null);
+    const savedSelectionRef = useRef(null);
+
+    // Sync editor HTML into formData
+    const syncEditorContent = useCallback(() => {
+        if (editorRef.current) {
+            setFormData(prev => ({ ...prev, content: editorRef.current.innerHTML }));
+        }
+    }, []);
+
+    // Save the current selection so toolbar clicks don't lose it
+    const saveSelection = useCallback(() => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+            savedSelectionRef.current = sel.getRangeAt(0).cloneRange();
+        }
+    }, []);
+
+    // Restore the saved selection into the editor
+    const restoreSelection = useCallback(() => {
+        if (savedSelectionRef.current) {
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(savedSelectionRef.current);
+        }
+    }, []);
+
+    // Execute formatting commands with robust toggle for mixed-state selections
+    const execFormat = useCallback((command, value = null) => {
+        // Restore selection that may have been lost to toolbar button focus
+        restoreSelection();
+
+        // Toggle commands: bold, italic, underline, strikeThrough
+        const toggleCommands = ['bold', 'italic', 'underline', 'strikeThrough'];
+        if (toggleCommands.includes(command)) {
+            const sel = window.getSelection();
+            if (sel && !sel.isCollapsed) {
+                // Check if the command is currently active on the selection
+                const isActive = document.queryCommandState(command);
+
+                // Walk through the selected content to detect mixed formatting
+                const range = sel.getRangeAt(0);
+                const fragment = range.cloneContents();
+                const tempDiv = document.createElement('div');
+                tempDiv.appendChild(fragment);
+
+                // Determine the tag names associated with each command
+                const tagMap = { bold: ['B', 'STRONG'], italic: ['I', 'EM'], underline: ['U'], strikeThrough: ['S', 'STRIKE', 'DEL'] };
+                const tags = tagMap[command] || [];
+                const hasFormatted = tags.some(tag => tempDiv.querySelector(tag));
+                const plainText = tempDiv.textContent || '';
+                const allText = editorRef.current?.textContent || '';
+
+                // Mixed state: some formatted, some not — normalize by removing first, then applying
+                if (hasFormatted && !isActive) {
+                    // Remove existing formatting on the selection, then apply uniformly
+                    document.execCommand(command, false, null); // this may partially toggle
+                    document.execCommand(command, false, null); // now all off
+                    document.execCommand(command, false, null); // apply uniformly
+                } else {
+                    // Standard toggle: if all on → turn off, if all off → turn on
+                    document.execCommand(command, false, null);
+                }
+            } else {
+                // No selection — just toggle at cursor
+                document.execCommand(command, false, null);
+            }
+        } else {
+            document.execCommand(command, false, value);
+        }
+
+        // Save the new selection state after formatting
+        saveSelection();
+        syncEditorContent();
+    }, [restoreSelection, saveSelection, syncEditorContent]);
+
+    // Prevent toolbar buttons from stealing focus (keeps text selection alive)
+    const preventFocusLoss = useCallback((e) => {
+        e.preventDefault();
+    }, []);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -79,6 +159,10 @@ export default function BlogManagement() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        // Sync latest editor content before submitting
+        if (editorRef.current) {
+            formData.content = editorRef.current.innerHTML;
+        }
         
         try {
             const payload = {
@@ -160,6 +244,12 @@ export default function BlogManagement() {
         });
         setImagePreview(blog.featuredImage?.url || '');
         setShowForm(true);
+        // Populate the WYSIWYG editor with existing content
+        setTimeout(() => {
+            if (editorRef.current) {
+                editorRef.current.innerHTML = blog.content || '';
+            }
+        }, 50);
     };
 
     const resetForm = () => {
@@ -179,6 +269,10 @@ export default function BlogManagement() {
             }
         });
         setImagePreview('');
+        // Clear the WYSIWYG editor
+        if (editorRef.current) {
+            editorRef.current.innerHTML = '';
+        }
     };
 
     const generateSlug = (title) => {
@@ -312,54 +406,50 @@ export default function BlogManagement() {
                         <label className="block text-sm font-light mb-3 text-gray-700">Content *</label>
                         
                         <div className="border border-gray-200 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-[#D4AF76] focus-within:border-transparent transition-all shadow-sm hover:shadow-md bg-white">
-                            {/* Rich Text Toolbar */}
-                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-1 p-2 sm:p-2 bg-gray-50 border-b border-gray-200">
+                            {/* WYSIWYG Toolbar */}
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-1 p-2 sm:p-2 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                                 {/* Font Family */}
                                 <select
+                                    onMouseDown={saveSelection}
                                     onChange={(e) => {
                                         const font = e.target.value;
                                         if (font) {
-                                            const tag = `<span style="font-family: ${font};">`;
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                content: prev.content + tag + '</span>'
-                                            }));
+                                            execFormat('fontName', font);
                                         }
+                                        e.target.value = '';
                                     }}
                                     className="h-8 px-2 text-xs border border-gray-200 rounded bg-white focus:border-[#D4AF76] focus:outline-none font-light text-gray-600 cursor-pointer hover:border-gray-300 transition-colors"
                                     defaultValue=""
                                 >
                                     <option value="" disabled>Font</option>
-                                    <option value="'Playfair Display', serif">Playfair Display</option>
-                                    <option value="'Georgia', serif">Georgia</option>
-                                    <option value="'Times New Roman', serif">Times New Roman</option>
-                                    <option value="'Arial', sans-serif">Arial</option>
-                                    <option value="'Helvetica', sans-serif">Helvetica</option>
-                                    <option value="'Roboto', sans-serif">Roboto</option>
-                                    <option value="'Open Sans', sans-serif">Open Sans</option>
+                                    <option value="Playfair Display">Playfair Display</option>
+                                    <option value="Georgia">Georgia</option>
+                                    <option value="Times New Roman">Times New Roman</option>
+                                    <option value="Arial">Arial</option>
+                                    <option value="Helvetica">Helvetica</option>
+                                    <option value="Roboto">Roboto</option>
+                                    <option value="Open Sans">Open Sans</option>
                                 </select>
 
                                 {/* Font Size */}
                                 <select
+                                    onMouseDown={saveSelection}
                                     onChange={(e) => {
                                         const size = e.target.value;
                                         if (size) {
-                                            const tag = `<span style="font-size: ${size};">`;
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                content: prev.content + tag + '</span>'
-                                            }));
+                                            execFormat('fontSize', size);
                                         }
+                                        e.target.value = '';
                                     }}
                                     className="h-8 px-2 text-xs border border-gray-200 rounded bg-white focus:border-[#D4AF76] focus:outline-none font-light text-gray-600 cursor-pointer hover:border-gray-300 transition-colors"
                                     defaultValue=""
                                 >
                                     <option value="" disabled>Size</option>
-                                    <option value="0.875rem">Small</option>
-                                    <option value="1rem">Normal</option>
-                                    <option value="1.25rem">Large</option>
-                                    <option value="1.5rem">Extra Large</option>
-                                    <option value="2rem">Heading</option>
+                                    <option value="1">Small</option>
+                                    <option value="3">Normal</option>
+                                    <option value="4">Large</option>
+                                    <option value="5">Extra Large</option>
+                                    <option value="6">Heading</option>
                                 </select>
 
                                 <div className="hidden sm:block w-px h-5 bg-gray-300 mx-1"></div>
@@ -368,7 +458,8 @@ export default function BlogManagement() {
                                 <div className="flex items-center gap-0.5 bg-white rounded-lg border border-gray-200 p-0.5">
                                     <button
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, content: prev.content + '<h2>' + '</h2>' }))}
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => execFormat('formatBlock', 'h2')}
                                         className="p-1 px-2 text-xs font-bold text-gray-600 hover:text-[#D4AF76] hover:bg-gray-50 rounded transition-colors"
                                         title="Heading 2"
                                     >
@@ -376,7 +467,8 @@ export default function BlogManagement() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, content: prev.content + '<h3>' + '</h3>' }))}
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => execFormat('formatBlock', 'h3')}
                                         className="p-1 px-2 text-xs font-bold text-gray-600 hover:text-[#D4AF76] hover:bg-gray-50 rounded transition-colors"
                                         title="Heading 3"
                                     >
@@ -384,7 +476,8 @@ export default function BlogManagement() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, content: prev.content + '<p>' + '</p>' }))}
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => execFormat('formatBlock', 'p')}
                                         className="p-1 px-2 text-xs font-bold text-gray-600 hover:text-[#D4AF76] hover:bg-gray-50 rounded transition-colors"
                                         title="Paragraph"
                                     >
@@ -398,7 +491,8 @@ export default function BlogManagement() {
                                 <div className="flex items-center gap-0.5 bg-white rounded-lg border border-gray-200 p-0.5">
                                     <button
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, content: prev.content + '<strong>' + '</strong>' }))}
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => execFormat('bold')}
                                         className="p-1.5 text-gray-600 hover:text-[#D4AF76] hover:bg-gray-50 rounded transition-colors"
                                         title="Bold"
                                     >
@@ -406,7 +500,8 @@ export default function BlogManagement() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, content: prev.content + '<em>' + '</em>' }))}
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => execFormat('italic')}
                                         className="p-1.5 text-gray-600 hover:text-[#D4AF76] hover:bg-gray-50 rounded transition-colors"
                                         title="Italic"
                                     >
@@ -414,7 +509,8 @@ export default function BlogManagement() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, content: prev.content + '<u>' + '</u>' }))}
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => execFormat('underline')}
                                         className="p-1.5 text-gray-600 hover:text-[#D4AF76] hover:bg-gray-50 rounded transition-colors"
                                         title="Underline"
                                     >
@@ -428,7 +524,8 @@ export default function BlogManagement() {
                                 <div className="flex items-center gap-0.5 bg-white rounded-lg border border-gray-200 p-0.5">
                                     <button
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, content: prev.content + '<ul>\n  <li></li>\n</ul>' }))}
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => execFormat('insertUnorderedList')}
                                         className="p-1.5 text-gray-600 hover:text-[#D4AF76] hover:bg-gray-50 rounded transition-colors"
                                         title="Bullet List"
                                     >
@@ -436,7 +533,8 @@ export default function BlogManagement() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, content: prev.content + '<ol>\n  <li></li>\n</ol>' }))}
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => execFormat('insertOrderedList')}
                                         className="p-1.5 text-gray-600 hover:text-[#D4AF76] hover:bg-gray-50 rounded transition-colors"
                                         title="Numbered List"
                                     >
@@ -450,7 +548,8 @@ export default function BlogManagement() {
                                 <div className="flex items-center gap-0.5 bg-white rounded-lg border border-gray-200 p-0.5">
                                     <button
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, content: prev.content + '<blockquote>' + '</blockquote>' }))}
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => execFormat('formatBlock', 'blockquote')}
                                         className="p-1.5 text-gray-600 hover:text-[#D4AF76] hover:bg-gray-50 rounded transition-colors"
                                         title="Blockquote"
                                     >
@@ -458,7 +557,13 @@ export default function BlogManagement() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setFormData(prev => ({ ...prev, content: prev.content + '<a href="">' + '</a>' }))}
+                                        onMouseDown={preventFocusLoss}
+                                        onClick={() => {
+                                            const url = prompt('Enter the URL:');
+                                            if (url) {
+                                                execFormat('createLink', url);
+                                            }
+                                        }}
                                         className="p-1.5 text-gray-600 hover:text-[#D4AF76] hover:bg-gray-50 rounded transition-colors"
                                         title="Link"
                                     >
@@ -467,19 +572,23 @@ export default function BlogManagement() {
                                 </div>
                             </div>
 
-                            {/* Content Textarea */}
-                            <Textarea
-                                value={formData.content}
-                                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                                rows={20}
-                                required
-                                placeholder="Start writing your beautiful story..."
-                                className="border-0 rounded-none focus:ring-0 resize-y min-h-[250px] sm:min-h-[400px] font-light font-mono text-sm leading-relaxed p-3 sm:p-6 bg-white outline-none active:outline-none focus:outline-none focus-visible:ring-0"
+                            {/* WYSIWYG Content Editor */}
+                            <div
+                                ref={editorRef}
+                                contentEditable
+                                suppressContentEditableWarning
+                                onInput={syncEditorContent}
+                                onBlur={syncEditorContent}
+                                onMouseUp={saveSelection}
+                                onKeyUp={saveSelection}
+                                data-placeholder="Start writing your beautiful story..."
+                                className="min-h-[250px] sm:min-h-[400px] font-light text-sm leading-relaxed p-3 sm:p-6 bg-white outline-none focus:outline-none blog-content empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 empty:before:pointer-events-none"
+                                style={{ overflowY: 'auto', maxHeight: '600px', whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
                             />
                         </div>
                         <p className="text-xs text-gray-400 mt-2 font-light flex items-center gap-1.5 pl-1">
                             <Type className="w-3.5 h-3.5" />
-                            Select text to apply formatting, or click a button to insert a new block.
+                            Select text and click a toolbar button to apply formatting. Content is displayed exactly as it will appear on the website.
                         </p>
                     </div>
 

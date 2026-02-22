@@ -259,14 +259,40 @@ img,
   line-clamp: 3;
 }
 
-/* Scrollbar hide utility */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* Scrollbar hide utility – hidden on mobile, styled thin scrollbar on desktop */
+@media (max-width: 1023px) {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+@media (min-width: 1024px) {
+  .scrollbar-hide {
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-primary) transparent;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar-thumb {
+    background-color: var(--gold-primary);
+    border-radius: 9999px;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar-thumb:hover {
+    background-color: var(--gold-secondary);
+  }
 }
 
 .snap-always {

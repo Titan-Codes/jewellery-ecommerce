@@ -33,6 +33,14 @@ export default function ProductsPage() {
     const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
     const categoryScrollRef = useRef(null);
     const subcategoryScrollRef = useRef(null);
+
+    // Scroll a container left or right by a fixed amount
+    const scrollByAmount = useCallback((ref, direction) => {
+        if (ref.current) {
+            const amount = direction === 'left' ? -300 : 300;
+            ref.current.scrollBy({ left: amount, behavior: 'smooth' });
+        }
+    }, []);
     const isInternalUrlUpdate = useRef(false);
 
     // Scroll to products grid (not page top) for better UX
@@ -462,7 +470,19 @@ export default function ProductsPage() {
                     transition={{ duration: 0.5, delay: 0.2 }}
                     className="mb-6 md:mb-8 lg:mb-10"
                 >
-                    <div ref={categoryScrollRef} className="flex gap-3 md:gap-4 lg:gap-6 overflow-x-auto scrollbar-hide py-2 px-1">
+                    <div className="relative group/scroll">
+                        {/* Left Arrow - Desktop Only */}
+                        <button
+                            onClick={() => scrollByAmount(categoryScrollRef, 'left')}
+                            className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center rounded-full bg-white/90 shadow-md border border-gray-200 text-[#8B6B4C] hover:bg-[#D4AF76] hover:text-white hover:border-[#D4AF76] transition-all duration-200 opacity-0 group-hover/scroll:opacity-100 -translate-x-1"
+                            aria-label="Scroll categories left"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+
+                        <div ref={categoryScrollRef} className="flex gap-3 md:gap-4 lg:gap-6 overflow-x-auto scrollbar-hide py-2 px-1 lg:px-10">
                         {categories.map((category, index) => (
                             <motion.button
                                 key={category.name}
@@ -531,6 +551,18 @@ export default function ProductsPage() {
                                 </span>
                             </motion.button>
                         ))}
+                        </div>
+
+                        {/* Right Arrow - Desktop Only */}
+                        <button
+                            onClick={() => scrollByAmount(categoryScrollRef, 'right')}
+                            className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center rounded-full bg-white/90 shadow-md border border-gray-200 text-[#8B6B4C] hover:bg-[#D4AF76] hover:text-white hover:border-[#D4AF76] transition-all duration-200 opacity-0 group-hover/scroll:opacity-100 translate-x-1"
+                            aria-label="Scroll categories right"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
                     </div>
                 </motion.div>
 
@@ -568,7 +600,19 @@ export default function ProductsPage() {
                         </div>
 
                         {/* Story-style Scrollable Badges */}
-                        <div ref={subcategoryScrollRef} className="flex gap-3 md:gap-4 lg:gap-5 overflow-x-auto scrollbar-hide py-2 px-1">
+                        <div className="relative group/scroll">
+                            {/* Left Arrow - Desktop Only */}
+                            <button
+                                onClick={() => scrollByAmount(subcategoryScrollRef, 'left')}
+                                className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center rounded-full bg-white/90 shadow-md border border-gray-200 text-[#8B6B4C] hover:bg-[#D4AF76] hover:text-white hover:border-[#D4AF76] transition-all duration-200 opacity-0 group-hover/scroll:opacity-100 -translate-x-1"
+                                aria-label="Scroll subcategories left"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+
+                            <div ref={subcategoryScrollRef} className="flex gap-3 md:gap-4 lg:gap-5 overflow-x-auto scrollbar-hide py-2 px-1 lg:px-10">
                             {/* All Subcategories Badge */}
                             <motion.button
                                 initial={{ opacity: 0, scale: 0.8 }}
@@ -684,6 +728,18 @@ export default function ProductsPage() {
                                     </span>
                                 </motion.button>
                             ))}
+                            </div>
+
+                            {/* Right Arrow - Desktop Only */}
+                            <button
+                                onClick={() => scrollByAmount(subcategoryScrollRef, 'right')}
+                                className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center rounded-full bg-white/90 shadow-md border border-gray-200 text-[#8B6B4C] hover:bg-[#D4AF76] hover:text-white hover:border-[#D4AF76] transition-all duration-200 opacity-0 group-hover/scroll:opacity-100 translate-x-1"
+                                aria-label="Scroll subcategories right"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
                         </div>
                     </motion.div>
                 )}
